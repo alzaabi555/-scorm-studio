@@ -1,0 +1,29 @@
+SCORM Studio Web — static browser edition
+
+PASS: JavaScript syntax app.js
+PASS: JavaScript syntax zip.js
+PASS: JavaScript syntax player.js
+PASS: JavaScript syntax sw.js
+PASS: Service worker ready under project subpath
+PASS: Interactive preview and score
+PASS: Lesson status passed
+PASS: API reinitializes after restart
+PASS: Activity state resumes
+PASS: SCORM score restored
+PASS: HTML report includes notes
+PASS: Exported SCORM ZIP integrity
+PASS: SCORM manifest at ZIP root
+PASS: Export does not need studio assets
+PASS: Stored ZIP import and replay
+PASS: Deflated ZIP decompression supported
+PASS: Mobile preview
+PASS: New attempt clears grade
+PASS: New attempt clears activity
+PASS: No browser JavaScript errors
+PASS: Folder assets and module fetch resolve relative paths
+PASS: External CSS preserved
+PASS: Media-style byte range responses
+PASS: ZIP traversal rejected
+
+Environment: headless Chromium via Playwright; local static HTTP origin (localhost secure-context exception); project deployed under /repository/ to exercise GitHub Pages-style relative URLs.
+No actual GitHub Pages deployment, AI Studio preview, external LMS, Safari/Firefox, or formal SCORM certification test was performed.
