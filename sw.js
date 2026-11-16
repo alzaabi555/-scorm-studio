@@ -1,1 +1,32 @@
-const PREFIX=new URL('__scorm__/',self.registration.scope).pathname;self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{let u=new URL(e.request.url);if(u.origin!==location.origin||!u.pathname.startsWith(PREFIX))return;e.respondWith((async()=>{let relative=u.pathname.slice(PREFIX.length),id=relative.split('/')[0];if(!/^[a-f0-9]{32}$/.test(id))return new Response('Invalid package',{status:400});let clean=new URL(u);clean.search='';clean.hash='';let c=await caches.open('scorm-web-'+id),r=await c.match(clean.href);if(r&&e.request.headers.has('Range')){let range=/^bytes=(\d*)-(\d*)$/.exec(e.request.headers.get('Range'));if(range){let data=await r.arrayBuffer(),len=data.byteLength,start=range[1]?Number(range[1]):Math.max(0,len-Number(range[2])),end=range[1]?(range[2]?Math.min(Number(range[2]),len-1):len-1):len-1;if(start> end||start>=len)return new Response(null,{status:416,headers:{'Content-Range':'bytes */'+len}});let headers=new Headers(r.headers);headers.set('Content-Range','bytes '+start+'-'+end+'/'+len);headers.set('Accept-Ranges','bytes');headers.set('Content-Length',end-start+1);return new Response(data.slice(start,end+1),{status:206,headers})}}return r||new Response('المورد غير موجود في الحزمة: '+decodeURIComponent(relative),{status:404,headers:{'Content-Type':'text/plain; charset=utf-8'}})})())});
+// Memory-only package mounting. No persistent storage, no application caching.
+const packages=new Map();
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+self.addEventListener('message',e=>{
+  if(e.data?.type!=='mount'||!e.source?.url?.startsWith(self.registration.scope))return;
+  try{
+    if(!/^[a-zA-Z0-9-]+$/.test(e.data.id))throw Error('معرف غير صالح');
+    if(!Array.isArray(e.data.files)||e.data.files.length>2000)throw Error('ملفات كثيرة');
+    let size=0;const map=new Map();
+    for(const [name,data]of e.data.files){
+      if(name.startsWith('/')||name.includes('..')||name.includes('\\'))throw Error('مسار غير آمن');
+      size+=data.byteLength;if(size>100*1024*1024)throw Error('حزمة كبيرة');
+      map.set(name,data);
+    }
+    if(packages.size>=2)packages.delete(packages.keys().next().value);
+    packages.set(e.data.id,map);e.ports[0]?.postMessage({ok:true});
+  }catch(error){e.ports[0]?.postMessage({ok:false,error:error.message})}
+});
+const types={html:'text/html',htm:'text/html',js:'text/javascript',mjs:'text/javascript',css:'text/css',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',json:'application/json',woff:'font/woff',woff2:'font/woff2',mp3:'audio/mpeg',mp4:'video/mp4',xml:'application/xml',txt:'text/plain',pdf:'application/pdf'};
+self.addEventListener('fetch',e=>{
+  const prefix=new URL('__packages/',self.registration.scope).href,url=new URL(e.request.url);
+  if(!url.href.startsWith(prefix))return;
+  e.respondWith((async()=>{
+    const rest=url.pathname.slice(new URL(prefix).pathname.length),slash=rest.indexOf('/'),id=rest.slice(0,slash);
+    let name=rest.slice(slash+1);try{name=decodeURIComponent(name)}catch{}
+    const map=packages.get(id),data=map?.get(name);
+    if(!map)return new Response('انتهت ذاكرة معاينة الحزمة. ارجع إلى الأداة وافتح ZIP مجددًا.',{status:410,headers:{'Content-Type':'text/plain; charset=utf-8'}});
+    if(!data)return new Response('ملف غير موجود في الحزمة',{status:404});
+    return new Response(data,{headers:{'Content-Type':(types[name.split('.').pop()?.toLowerCase()]||'application/octet-stream')+(/\.html?$/i.test(name)?'; charset=utf-8':''),'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+  })());
+});

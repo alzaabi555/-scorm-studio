@@ -1,10 +1,9 @@
-import {mkdir,copyFile,access} from 'node:fs/promises';
-import path from 'node:path';
+import {mkdir,copyFile,cp,rm} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-const root=path.dirname(fileURLToPath(import.meta.url));
-const required=['index.html','style.css','zip.js','sw.js','app.js','runtime.html','demo.html','player.html','player.js'];
-for(const name of required){try{await access(path.join(root,name))}catch(e){throw Error('Missing original SCORM Studio file: '+name)}}
-await mkdir(path.join(root,'dist'),{recursive:true});
-for(const name of required)await copyFile(path.join(root,name),path.join(root,'dist',name));
-try{await copyFile(path.join(root,'.nojekyll'),path.join(root,'dist','.nojekyll'))}catch(e){}
-console.log('Static site copied to dist. No application bundling or external dependencies required.');
+import path from 'node:path';
+const root=path.dirname(fileURLToPath(import.meta.url)),dest=path.join(root,'dist');
+await rm(dest,{recursive:true,force:true});await mkdir(dest,{recursive:true});
+for(const file of ['index.html','app.js','style.css','schema.js','runtime.js','exporter.js','demo.js','config.js','source-reader.js','sw.js','legacy-player.html','legacy-player.js'])await copyFile(path.join(root,file),path.join(dest,file));
+await cp(path.join(root,'vendor'),path.join(dest,'vendor'),{recursive:true});
+await copyFile(path.join(root,'.nojekyll'),path.join(dest,'.nojekyll'));
+console.log('Static build ready: dist/. Server configuration and secrets are not included.');
